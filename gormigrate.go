@@ -331,7 +331,7 @@ func (g *Gormigrate) rollbackMigration(m *Migration) error {
 	}
 
 	sql := fmt.Sprintf("DELETE FROM %s WHERE %s = ?", g.options.TableName, g.options.IDColumnName)
-	return g.tx.Exec(sql, m.ID).Error
+	return g.tx.Session(&gorm.Session{}).Exec(sql, m.ID).Error
 }
 
 func (g *Gormigrate) runInitSchema() error {
@@ -373,17 +373,18 @@ func (g *Gormigrate) runMigration(migration *Migration) error {
 }
 
 func (g *Gormigrate) createMigrationTableIfNotExists() error {
-	if g.tx.Migrator().HasTable(g.options.TableName) {
+	if g.tx.Session(&gorm.Session{}).Migrator().HasTable(g.options.TableName) {
 		return nil
 	}
 
 	sql := fmt.Sprintf("CREATE TABLE %s (%s VARCHAR(%d) PRIMARY KEY)", g.options.TableName, g.options.IDColumnName, g.options.IDColumnSize)
-	return g.tx.Exec(sql).Error
+	return g.tx.Session(&gorm.Session{}).Exec(sql).Error
 }
 
 func (g *Gormigrate) migrationRan(m *Migration) (bool, error) {
 	var count int64
 	err := g.tx.
+		Session(&gorm.Session{}).
 		Table(g.options.TableName).
 		Where(fmt.Sprintf("%s = ?", g.options.IDColumnName), m.ID).
 		Count(&count).
@@ -405,6 +406,7 @@ func (g *Gormigrate) canInitializeSchema() (bool, error) {
 	// If the ID doesn't exist, we also want the list of migrations to be empty
 	var count int64
 	err = g.tx.
+		Session(&gorm.Session{}).
 		Table(g.options.TableName).
 		Count(&count).
 		Error
@@ -413,7 +415,7 @@ func (g *Gormigrate) canInitializeSchema() (bool, error) {
 
 func (g *Gormigrate) unknownMigrationsHaveHappened() (bool, error) {
 	sql := fmt.Sprintf("SELECT %s FROM %s", g.options.IDColumnName, g.options.TableName)
-	rows, err := g.tx.Raw(sql).Rows()
+	rows, err := g.tx.Session(&gorm.Session{}).Raw(sql).Rows()
 	if err != nil {
 		return false, err
 	}
@@ -440,7 +442,7 @@ func (g *Gormigrate) unknownMigrationsHaveHappened() (bool, error) {
 
 func (g *Gormigrate) insertMigration(id string) error {
 	sql := fmt.Sprintf("INSERT INTO %s (%s) VALUES (?)", g.options.TableName, g.options.IDColumnName)
-	return g.tx.Exec(sql, id).Error
+	return g.tx.Session(&gorm.Session{}).Exec(sql, id).Error
 }
 
 func (g *Gormigrate) begin() {
